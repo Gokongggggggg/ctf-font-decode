@@ -47,7 +47,7 @@ Decoded: v1t{g04t_mck_hvl}
 
 ## Simple Frontend
 
-Open [index.html](index.html) in a browser. Upload a font, paste text, then click Decode.
+Open [index.html](https://gokongggggggg.github.io/ctf-font-decode/) in a browser. Upload a font, paste text, then click Decode.
 
 The browser frontend currently supports raw `.ttf` and `.otf` fonts. It does not parse `.woff` or `.woff2` wrappers yet.
 
