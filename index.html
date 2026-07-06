@@ -370,6 +370,10 @@
 
     function parseFont(buffer) {
       const view = new DataView(buffer);
+      const sfnt = u32(view, 0);
+      if (![0x00010000, 0x4F54544F, 0x74727565].includes(sfnt)) {
+        throw new Error("Unsupported font wrapper. Use raw TTF/OTF, not WOFF/WOFF2.");
+      }
       const numTables = u16(view, 4);
       const tables = [];
       for (let i = 0; i < numTables; i++) {

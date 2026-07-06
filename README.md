@@ -25,4 +25,6 @@ This tool does not brute force. It only decodes mappings that are directly prese
 
 ## Simple Frontend
 
-Open [web/index.html](web/index.html) in a browser. Upload a font, paste text, then click Decode.
+Open [index.html](index.html) in a browser. Upload a font, paste text, then click Decode.
+
+The browser frontend currently supports raw `.ttf` and `.otf` fonts. It does not parse `.woff` or `.woff2` wrappers yet.
