@@ -9,7 +9,7 @@ Some CTF challenges hide text by abusing custom fonts instead of JavaScript or e
 Example:
 
 ```text
-😀 😃 😄 😁
+emoji emoji emoji emoji
 ```
 
 may render as:
@@ -26,13 +26,40 @@ This is still an early-stage tool. It currently focuses on simple CMAP-based tri
 
 It does not brute force flags and it does not guess mappings. It only decodes mappings that are directly present in the font.
 
-## Usage
+## How to Use
+
+You can use this in two ways.
+
+### Option 1: Simple Web UI
+
+Open the web version:
+
+[https://gokongggggggg.github.io/ctf-font-decode/](https://gokongggggggg.github.io/ctf-font-decode/)
+
+Then:
+
+1. Upload the suspicious `.ttf` / `.otf` font.
+2. Paste the suspicious text from the challenge.
+3. Click Decode.
+4. Check the decoded output and mapping table.
+
+### Option 2: CLI
+
+Clone this repo and install it locally:
 
 ```powershell
-python -m ctf_font_decode.cli --font .\NotoSans-Regular.ttf --text-file .\payload.txt --only emoji --mapping
+git clone https://github.com/Gokongggggggg/ctf-font-decode.git
+cd ctf-font-decode
+pip install -e .
 ```
 
-Or from a file:
+Then run:
+
+```powershell
+font-decode --font .\NotoSans-Regular.ttf --text-file .\payload.txt --only emoji --mapping
+```
+
+You can also run it without installing the console command:
 
 ```powershell
 python -m ctf_font_decode.cli --font .\NotoSans-Regular.ttf --text-file .\embedded.srt --only emoji
@@ -44,12 +71,6 @@ Example output:
 Font: Emoji To AZ Regular
 Decoded: v1t{g04t_mck_hvl}
 ```
-
-## Simple Frontend
-
-Open [index.html](https://gokongggggggg.github.io/ctf-font-decode/) in a browser. Upload a font, paste text, then click Decode.
-
-The browser frontend currently supports raw `.ttf` and `.otf` fonts. It does not parse `.woff` or `.woff2` wrappers yet.
 
 ## Current Limitations
 
