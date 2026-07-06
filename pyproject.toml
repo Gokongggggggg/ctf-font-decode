@@ -1,0 +1,16 @@
+[project]
+name = "ctf-font-decode"
+version = "0.1.0"
+description = "Decode CTF glyph tricks by reading font CMAP glyph names."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fonttools>=4.0",
+]
+
+[project.scripts]
+font-decode = "ctf_font_decode.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
