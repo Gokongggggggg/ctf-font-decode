@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTF Font Decode</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #191c22;
+      --line: #303743;
+      --text: #f3f6fb;
+      --muted: #a8b1bf;
+      --accent: #67e8b9;
+      --warn: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, Segoe UI, system-ui, sans-serif;
+    }
+
+    main {
+      width: min(920px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 30px 0;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .wide { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d0f14;
+      color: var(--text);
+      padding: 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+      font: 22px/1.45 Segoe UI Emoji, Noto Color Emoji, system-ui, sans-serif;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #062016;
+      padding: 11px 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .row {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .row > * { flex: 1; }
+    .row button { flex: 0 0 auto; }
+
+    .output {
+      min-height: 72px;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent);
+      overflow-wrap: anywhere;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 8px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta strong { color: var(--text); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { color: var(--muted); }
+
+    .mono {
+      font-family: Consolas, ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .warn { color: var(--warn); }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .meta { grid-template-columns: 1fr; }
+      .row { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>CTF Font Decode</h1>
+    <p class="sub">Upload a font, paste suspicious text, and decode readable glyph-name mappings from CMAP.</p>
+
+    <section class="grid">
+      <div class="panel">
+        <label for="fontInput">Font (.ttf / .otf)</label>
+        <input id="fontInput" type="file" accept=".ttf,.otf,font/ttf,font/otf">
+        <p class="hint">Works best when glyph names are readable, for example <span class="mono">v</span>, <span class="mono">one</span>, <span class="mono">braceleft</span>, <span class="mono">underscore</span>.</p>
+      </div>
+
+      <div class="panel">
+        <label>Font metadata</label>
+        <div class="meta" id="meta">
+          <span>Status</span><strong>No font loaded</strong>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <label for="textInput">Input text</label>
+        <textarea id="textInput">😀😃😄😁😆😅😂🤣🥲😊😇🙂🥲🙃😉😌😍</textarea>
+        <div class="row">
+          <div>
+            <label for="filterInput">Decode characters</label>
+            <select id="filterInput">
+              <option value="emoji">Emoji only</option>
+              <option value="non-ascii">Non-ASCII</option>
+              <option value="all">All characters</option>
+            </select>
+          </div>
+          <button id="decodeBtn">Decode</button>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <label>Output</label>
+        <div class="output" id="output">-</div>
+      </div>
+
+      <div class="panel wide">
+        <label>Mapping</label>
+        <div id="mapping" class="hint">Load a font and decode text.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = { font: null };
+
+    const els = {
+      fontInput: document.querySelector("#fontInput"),
+      textInput: document.querySelector("#textInput"),
+      filterInput: document.querySelector("#filterInput"),
+      decodeBtn: document.querySelector("#decodeBtn"),
+      output: document.querySelector("#output"),
+      mapping: document.querySelector("#mapping"),
+      meta: document.querySelector("#meta"),
+    };
+
+    const glyphText = {
+      space: " ", exclam: "!", quotedbl: '"', numbersign: "#", dollar: "$",
+      percent: "%", ampersand: "&", quotesingle: "'", parenleft: "(",
+      parenright: ")", asterisk: "*", plus: "+", comma: ",", hyphen: "-",
+      minus: "-", period: ".", slash: "/", zero: "0", one: "1", two: "2",
+      three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8",
+      nine: "9", colon: ":", semicolon: ";", less: "<", equal: "=",
+      greater: ">", question: "?", at: "@", bracketleft: "[",
+      backslash: "\\", bracketright: "]", asciicircum: "^",
+      underscore: "_", grave: "`", braceleft: "{", bar: "|",
+      braceright: "}", asciitilde: "~",
+    };
+
+    const standardNames = (() => {
+      const names = [".notdef", ".null", "nonmarkingreturn", "space", "exclam", "quotedbl", "numbersign", "dollar", "percent", "ampersand", "quotesingle", "parenleft", "parenright", "asterisk", "plus", "comma", "hyphen", "period", "slash", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "colon", "semicolon", "less", "equal", "greater", "question", "at"];
+      for (let cp = 65; cp <= 90; cp++) names.push(String.fromCharCode(cp));
+      names.push("bracketleft", "backslash", "bracketright", "asciicircum", "underscore", "grave");
+      for (let cp = 97; cp <= 122; cp++) names.push(String.fromCharCode(cp));
+      names.push("braceleft", "bar", "braceright", "asciitilde");
+      return names;
+    })();
+
+    function u16(view, offset) { return view.getUint16(offset, false); }
+    function i16(view, offset) { return view.getInt16(offset, false); }
+    function u32(view, offset) { return view.getUint32(offset, false); }
+    function tag(view, offset) {
+      return String.fromCharCode(view.getUint8(offset), view.getUint8(offset + 1), view.getUint8(offset + 2), view.getUint8(offset + 3));
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[ch]);
+    }
+
+    function codepoint(ch) {
+      const cp = ch.codePointAt(0);
+      return cp <= 0xFFFF ? `U+${cp.toString(16).toUpperCase().padStart(4, "0")}` : `U+${cp.toString(16).toUpperCase()}`;
+    }
+
+    function decodeName(bytes, platformId, encodingId) {
+      if (platformId === 0 || platformId === 3 || encodingId === 1 || encodingId === 10) {
+        let out = "";
+        for (let i = 0; i + 1 < bytes.length; i += 2) out += String.fromCharCode((bytes[i] << 8) | bytes[i + 1]);
+        return out.replace(/\0/g, "");
+      }
+      return new TextDecoder("latin1").decode(new Uint8Array(bytes)).replace(/\0/g, "");
+    }
+
+    function parseNames(view, table) {
+      const ids = { 1: "family", 4: "fullName", 5: "version" };
+      const names = {};
+      const base = table.offset;
+      const count = u16(view, base + 2);
+      const stringOffset = u16(view, base + 4);
+      for (let i = 0; i < count; i++) {
+        const rec = base + 6 + i * 12;
+        const platformId = u16(view, rec);
+        const encodingId = u16(view, rec + 2);
+        const languageId = u16(view, rec + 4);
+        const nameId = u16(view, rec + 6);
+        const length = u16(view, rec + 8);
+        const offset = u16(view, rec + 10);
+        if (!ids[nameId]) continue;
+        const start = base + stringOffset + offset;
+        const bytes = [];
+        for (let j = 0; j < length; j++) bytes.push(view.getUint8(start + j));
+        const value = decodeName(bytes, platformId, encodingId).trim();
+        if (value && (!names[ids[nameId]] || languageId === 0x0409 || languageId === 0)) names[ids[nameId]] = value;
+      }
+      return names;
+    }
+
+    function parsePostNames(view, table, numGlyphs) {
+      if (!table) return [];
+      const base = table.offset;
+      const format = u32(view, base);
+      if (format !== 0x00020000) return [];
+      const count = u16(view, base + 32);
+      const nameIndices = [];
+      let pos = base + 34;
+      for (let i = 0; i < count; i++, pos += 2) nameIndices.push(u16(view, pos));
+      const custom = [];
+      while (pos < base + table.length) {
+        const len = view.getUint8(pos++);
+        let value = "";
+        for (let i = 0; i < len && pos < base + table.length; i++, pos++) value += String.fromCharCode(view.getUint8(pos));
+        custom.push(value);
+      }
+      const names = [];
+      for (let gid = 0; gid < Math.min(count, numGlyphs); gid++) {
+        const idx = nameIndices[gid];
+        names[gid] = idx < 258 ? standardNames[idx] : custom[idx - 258];
+      }
+      return names;
+    }
+
+    function parseCmapFormat4(view, offset, cmap) {
+      const segCount = u16(view, offset + 6) / 2;
+      const endCodes = offset + 14;
+      const startCodes = endCodes + segCount * 2 + 2;
+      const idDeltas = startCodes + segCount * 2;
+      const idRangeOffsets = idDeltas + segCount * 2;
+      for (let i = 0; i < segCount; i++) {
+        const end = u16(view, endCodes + i * 2);
+        const start = u16(view, startCodes + i * 2);
+        const delta = i16(view, idDeltas + i * 2);
+        const rangeOffset = u16(view, idRangeOffsets + i * 2);
+        for (let cp = start; cp <= end && cp !== 0xFFFF; cp++) {
+          let gid = 0;
+          if (rangeOffset === 0) {
+            gid = (cp + delta) & 0xFFFF;
+          } else {
+            const glyphOffset = idRangeOffsets + i * 2 + rangeOffset + (cp - start) * 2;
+            if (glyphOffset + 1 < view.byteLength) {
+              const raw = u16(view, glyphOffset);
+              gid = raw === 0 ? 0 : (raw + delta) & 0xFFFF;
+            }
+          }
+          if (gid) cmap.set(cp, gid);
+        }
+      }
+    }
+
+    function parseCmapFormat12(view, offset, cmap) {
+      const groups = u32(view, offset + 12);
+      for (let i = 0; i < groups; i++) {
+        const rec = offset + 16 + i * 12;
+        const start = u32(view, rec);
+        const end = u32(view, rec + 4);
+        const startGlyph = u32(view, rec + 8);
+        for (let cp = start; cp <= end && cp - start < 20000; cp++) cmap.set(cp, startGlyph + (cp - start));
+      }
+    }
+
+    function parseCmap(view, table) {
+      const cmap = new Map();
+      const base = table.offset;
+      const numTables = u16(view, base + 2);
+      const subtables = [];
+      for (let i = 0; i < numTables; i++) {
+        const rec = base + 4 + i * 8;
+        const offset = base + u32(view, rec + 4);
+        subtables.push({ offset, format: u16(view, offset) });
+      }
+      subtables.filter((s) => s.format === 12).forEach((s) => parseCmapFormat12(view, s.offset, cmap));
+      subtables.filter((s) => s.format === 4).forEach((s) => parseCmapFormat4(view, s.offset, cmap));
+      return cmap;
+    }
+
+    function parseFont(buffer) {
+      const view = new DataView(buffer);
+      const numTables = u16(view, 4);
+      const tables = [];
+      for (let i = 0; i < numTables; i++) {
+        const rec = 12 + i * 16;
+        tables.push({ tag: tag(view, rec), offset: u32(view, rec + 8), length: u32(view, rec + 12) });
+      }
+      const byTag = Object.fromEntries(tables.map((t) => [t.tag, t]));
+      const numGlyphs = byTag.maxp ? u16(view, byTag.maxp.offset + 4) : 0;
+      return {
+        names: byTag.name ? parseNames(view, byTag.name) : {},
+        numGlyphs,
+        cmap: byTag.cmap ? parseCmap(view, byTag.cmap) : new Map(),
+        glyphNames: parsePostNames(view, byTag.post, numGlyphs),
+      };
+    }
+
+    function glyphNameToText(name) {
+      if (!name) return null;
+      if (glyphText[name] !== undefined) return glyphText[name];
+      if (name.length === 1) return name;
+      if (/^uni[0-9A-Fa-f]{4}$/.test(name)) return String.fromCharCode(parseInt(name.slice(3), 16));
+      return null;
+    }
+
+    function shouldDecode(ch) {
+      const cp = ch.codePointAt(0);
+      const mode = els.filterInput.value;
+      if (mode === "all") return true;
+      if (mode === "non-ascii") return cp >= 0x80;
+      return (cp >= 0x1F000 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF);
+    }
+
+    function renderMeta() {
+      const font = state.font;
+      if (!font) {
+        els.meta.innerHTML = "<span>Status</span><strong>No font loaded</strong>";
+        return;
+      }
+      els.meta.innerHTML = `
+        <span>Family</span><strong>${escapeHtml(font.names.family || "-")}</strong>
+        <span>Full name</span><strong>${escapeHtml(font.names.fullName || "-")}</strong>
+        <span>Version</span><strong>${escapeHtml(font.names.version || "-")}</strong>
+        <span>Glyphs</span><strong>${font.numGlyphs}</strong>
+        <span>CMAP entries</span><strong>${font.cmap.size}</strong>
+      `;
+    }
+
+    function decode() {
+      if (!state.font) {
+        els.output.textContent = "-";
+        els.mapping.innerHTML = '<span class="warn">Load a font first.</span>';
+        return;
+      }
+      const rows = [];
+      let output = "";
+      for (const ch of Array.from(els.textInput.value)) {
+        if (!shouldDecode(ch)) continue;
+        const gid = state.font.cmap.get(ch.codePointAt(0));
+        const glyph = state.font.glyphNames[gid];
+        const decoded = glyphNameToText(glyph);
+        if (decoded === null) continue;
+        output += decoded;
+        rows.push({ ch, cp: codepoint(ch), gid, glyph, decoded });
+      }
+      els.output.textContent = output || "-";
+      els.mapping.innerHTML = rows.length
+        ? `<table><thead><tr><th>Char</th><th>Code</th><th>Glyph ID</th><th>Glyph name</th><th>Decoded</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.ch)}</td><td class="mono">${row.cp}</td><td class="mono">${row.gid}</td><td class="mono">${escapeHtml(row.glyph || "-")}</td><td class="mono">${escapeHtml(row.decoded)}</td></tr>`).join("")}</tbody></table>`
+        : '<span class="warn">No readable glyph-name mappings found.</span>';
+    }
+
+    els.fontInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        state.font = parseFont(await file.arrayBuffer());
+        renderMeta();
+        decode();
+      } catch (error) {
+        state.font = null;
+        renderMeta();
+        els.mapping.innerHTML = `<span class="warn">${escapeHtml(error.message)}</span>`;
+      }
+    });
+
+    els.decodeBtn.addEventListener("click", decode);
+    els.textInput.addEventListener("input", decode);
+    els.filterInput.addEventListener("change", decode);
+  </script>
+</body>
+</html>

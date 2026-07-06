@@ -22,3 +22,7 @@ Decoded: v1t{g04t_mck_hvl}
 ```
 
 This tool does not brute force. It only decodes mappings that are directly present in the font.
+
+## Simple Frontend
+
+Open [web/index.html](web/index.html) in a browser. Upload a font, paste text, then click Decode.
